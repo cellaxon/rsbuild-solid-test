@@ -12,22 +12,28 @@ export default function BillingPage() {
 
         <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
           <Card>
-            <CardContent class="p-6">
+            <CardHeader class="pb-2">
               <p class="text-sm font-medium text-gray-600">Current Bill</p>
+            </CardHeader>
+            <CardContent>
               <p class="text-2xl font-bold text-gray-900">$847.32</p>
               <p class="mt-2 text-sm text-gray-600">Due Dec 1, 2024</p>
             </CardContent>
           </Card>
           <Card>
-            <CardContent class="p-6">
+            <CardHeader class="pb-2">
               <p class="text-sm font-medium text-gray-600">Monthly Average</p>
+            </CardHeader>
+            <CardContent>
               <p class="text-2xl font-bold text-gray-900">$756.89</p>
               <p class="mt-2 text-sm text-green-600">-5% from last month</p>
             </CardContent>
           </Card>
           <Card>
-            <CardContent class="p-6">
+            <CardHeader class="pb-2">
               <p class="text-sm font-medium text-gray-600">Plan</p>
+            </CardHeader>
+            <CardContent>
               <p class="text-2xl font-bold text-gray-900">Business</p>
               <p class="mt-2 text-sm text-gray-600">$500/mo + usage</p>
             </CardContent>

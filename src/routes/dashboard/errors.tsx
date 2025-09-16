@@ -12,22 +12,28 @@ export default function ErrorsPage() {
 
         <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
           <Card>
-            <CardContent class="p-6">
+            <CardHeader class="pb-2">
               <p class="text-sm font-medium text-gray-600">Total Errors (24h)</p>
+            </CardHeader>
+            <CardContent>
               <p class="text-2xl font-bold text-gray-900">127</p>
               <p class="mt-2 text-sm text-red-600">+23 from yesterday</p>
             </CardContent>
           </Card>
           <Card>
-            <CardContent class="p-6">
+            <CardHeader class="pb-2">
               <p class="text-sm font-medium text-gray-600">Error Rate</p>
+            </CardHeader>
+            <CardContent>
               <p class="text-2xl font-bold text-gray-900">0.3%</p>
               <p class="mt-2 text-sm text-green-600">Within threshold</p>
             </CardContent>
           </Card>
           <Card>
-            <CardContent class="p-6">
+            <CardHeader class="pb-2">
               <p class="text-sm font-medium text-gray-600">Most Common</p>
+            </CardHeader>
+            <CardContent>
               <p class="text-2xl font-bold text-gray-900">404</p>
               <p class="mt-2 text-sm text-gray-600">45 occurrences</p>
             </CardContent>
