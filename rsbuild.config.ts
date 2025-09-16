@@ -9,4 +9,10 @@ export default defineConfig({
     }),
     pluginSolid(),
   ],
+  html: {
+    template: './public/index.html',
+  },
+  server: {
+    historyApiFallback: true,
+  },
 });
