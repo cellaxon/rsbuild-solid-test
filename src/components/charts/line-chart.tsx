@@ -1,76 +1,116 @@
-import { onMount } from 'solid-js'
+import * as d3 from 'd3'
+import { onMount, onCleanup } from 'solid-js'
+
+interface DataPoint {
+  date?: Date
+  name?: string
+  value: number
+}
 
 interface LineChartProps {
-  data: Array<{ name: string; value: number }>
+  data: DataPoint[]
+  width?: number
   height?: number
+  color?: string
+  title?: string
 }
 
 export function LineChart(props: LineChartProps) {
-  let canvasRef: HTMLCanvasElement | undefined
+  let svgRef: SVGSVGElement | undefined
 
   onMount(() => {
-    if (!canvasRef) return
+    if (!svgRef || !props.data.length) return
 
-    const ctx = canvasRef.getContext('2d')
-    if (!ctx) return
+    const width = props.width || 500
+    const height = props.height || 300
+    const color = props.color || '#3b82f6'
 
-    const { width, height } = canvasRef
-    const data = props.data
-    const maxValue = Math.max(...data.map(d => d.value))
-    const padding = 40
+    const margin = { top: 20, right: 30, bottom: 40, left: 50 }
+    const innerWidth = width - margin.left - margin.right
+    const innerHeight = height - margin.top - margin.bottom
 
-    ctx.clearRect(0, 0, width, height)
+    // Prepare data - handle both date and name fields
+    const data = props.data.map((d, i) => ({
+      date: d.date || new Date(Date.now() - (props.data.length - i - 1) * 60 * 60 * 1000),
+      value: d.value
+    }))
 
-    // Draw axes
-    ctx.strokeStyle = '#E5E7EB'
-    ctx.lineWidth = 1
-    ctx.beginPath()
-    ctx.moveTo(padding, padding)
-    ctx.lineTo(padding, height - padding)
-    ctx.lineTo(width - padding, height - padding)
-    ctx.stroke()
+    d3.select(svgRef).selectAll("*").remove()
 
-    // Draw line
-    ctx.strokeStyle = '#3B82F6'
-    ctx.lineWidth = 2
-    ctx.beginPath()
+    const svg = d3.select(svgRef)
+      .attr("width", width)
+      .attr("height", height)
 
-    data.forEach((item, index) => {
-      const x = padding + (index / (data.length - 1)) * (width - padding * 2)
-      const y = height - padding - ((item.value / maxValue) * (height - padding * 2))
+    const g = svg.append("g")
+      .attr("transform", `translate(${margin.left},${margin.top})`)
 
-      if (index === 0) {
-        ctx.moveTo(x, y)
-      } else {
-        ctx.lineTo(x, y)
-      }
+    const xScale = d3.scaleTime()
+      .domain(d3.extent(data, d => d.date) as [Date, Date])
+      .range([0, innerWidth])
 
-      // Draw point
-      ctx.fillStyle = '#3B82F6'
-      ctx.beginPath()
-      ctx.arc(x, y, 4, 0, Math.PI * 2)
-      ctx.fill()
-    })
+    const yScale = d3.scaleLinear()
+      .domain([0, d3.max(data, d => d.value) as number])
+      .range([innerHeight, 0])
 
-    ctx.stroke()
+    const line = d3.line<typeof data[0]>()
+      .x(d => xScale(d.date))
+      .y(d => yScale(d.value))
+      .curve(d3.curveMonotoneX)
 
-    // Draw labels
-    ctx.fillStyle = '#666'
-    ctx.font = '12px sans-serif'
-    ctx.textAlign = 'center'
+    g.append("g")
+      .attr("transform", `translate(0,${innerHeight})`)
+      .call(d3.axisBottom(xScale).tickFormat(d3.timeFormat("%H:%M") as any))
 
-    data.forEach((item, index) => {
-      const x = padding + (index / (data.length - 1)) * (width - padding * 2)
-      ctx.fillText(item.name, x, height - padding + 20)
+    g.append("g")
+      .call(d3.axisLeft(yScale))
+
+    g.append("path")
+      .datum(data)
+      .attr("fill", "none")
+      .attr("stroke", color)
+      .attr("stroke-width", 2)
+      .attr("d", line)
+
+    const tooltip = d3.select("body").append("div")
+      .attr("class", "d3-tooltip")
+      .style("opacity", 0)
+      .style("position", "absolute")
+      .style("background", "rgba(0, 0, 0, 0.8)")
+      .style("color", "white")
+      .style("padding", "8px")
+      .style("border-radius", "4px")
+      .style("font-size", "12px")
+      .style("pointer-events", "none")
+
+    g.selectAll(".dot")
+      .data(data)
+      .enter().append("circle")
+      .attr("class", "dot")
+      .attr("cx", d => xScale(d.date))
+      .attr("cy", d => yScale(d.value))
+      .attr("r", 4)
+      .attr("fill", color)
+      .on("mouseover", (event, d) => {
+        tooltip.transition().duration(200).style("opacity", .9)
+        tooltip.html(`Value: ${d.value}<br/>Time: ${d3.timeFormat("%H:%M")(d.date)}`)
+          .style("left", `${event.pageX + 10}px`)
+          .style("top", `${event.pageY - 28}px`)
+      })
+      .on("mouseout", () => {
+        tooltip.transition().duration(500).style("opacity", 0)
+      })
+
+    onCleanup(() => {
+      d3.select("body").selectAll(".d3-tooltip").remove()
     })
   })
 
   return (
-    <canvas
-      ref={canvasRef}
-      width={400}
-      height={props.height || 200}
-      class="w-full"
-    />
+    <div>
+      {props.title && <h3 class="text-lg font-semibold mb-2">{props.title}</h3>}
+      <svg ref={svgRef} role="img" aria-label={props.title ?? 'Line chart'}>
+        <title>{props.title ?? 'Line chart'}</title>
+      </svg>
+    </div>
   )
 }

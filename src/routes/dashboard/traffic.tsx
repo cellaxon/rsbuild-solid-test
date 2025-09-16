@@ -1,59 +1,64 @@
 import { DashboardLayout } from '../../components/layout/dashboard-layout'
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card'
 import { LineChart } from '../../components/charts/line-chart'
+import { BarChart } from '../../components/charts/bar-chart'
 
 export default function TrafficPage() {
-  const trafficData = [
-    { name: '00:00', value: 120 },
-    { name: '04:00', value: 80 },
-    { name: '08:00', value: 350 },
-    { name: '12:00', value: 480 },
-    { name: '16:00', value: 420 },
-    { name: '20:00', value: 280 }
+  const generateTimeSeriesData = () => {
+    const data = []
+    const now = new Date()
+    for (let i = 48; i >= 0; i--) {
+      data.push({
+        date: new Date(now.getTime() - i * 30 * 60 * 1000),
+        value: Math.floor(Math.random() * 1000) + 200
+      })
+    }
+    return data
+  }
+
+  const endpointData = [
+    { label: '/api/users', value: 8500 },
+    { label: '/api/products', value: 6200 },
+    { label: '/api/orders', value: 4800 },
+    { label: '/api/auth', value: 3500 },
+    { label: '/api/analytics', value: 2100 },
+    { label: '/api/reports', value: 1800 }
   ]
 
   return (
     <DashboardLayout>
-      <div class="space-y-6">
-        <div>
-          <h2 class="text-2xl font-bold text-gray-900">Traffic Analytics</h2>
-          <p class="mt-1 text-sm text-gray-600">Monitor your API traffic patterns and trends</p>
+      <div>
+        <h1 class="text-2xl font-bold mb-6">API Traffic Analysis</h1>
+
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Real-time Traffic (Last 24 Hours)</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <LineChart
+                data={generateTimeSeriesData()}
+                width={500}
+                height={300}
+                color="#3b82f6"
+              />
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Top Endpoints by Request Count</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <BarChart
+                data={endpointData}
+                width={500}
+                height={300}
+                color="#059669"
+              />
+            </CardContent>
+          </Card>
         </div>
-
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <Card>
-            <CardContent class="p-6">
-              <p class="text-sm font-medium text-gray-600">Peak Traffic</p>
-              <p class="text-2xl font-bold text-gray-900">480 req/min</p>
-              <p class="mt-2 text-sm text-gray-600">at 12:00 PM</p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardContent class="p-6">
-              <p class="text-sm font-medium text-gray-600">Total Today</p>
-              <p class="text-2xl font-bold text-gray-900">125,430</p>
-              <p class="mt-2 text-sm text-green-600">+15% vs yesterday</p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardContent class="p-6">
-              <p class="text-sm font-medium text-gray-600">Average Load</p>
-              <p class="text-2xl font-bold text-gray-900">265 req/min</p>
-              <p class="mt-2 text-sm text-gray-600">Last 24 hours</p>
-            </CardContent>
-          </Card>
-        </div>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Traffic Over Time</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <LineChart data={trafficData} height={300} />
-          </CardContent>
-        </Card>
       </div>
     </DashboardLayout>
   )

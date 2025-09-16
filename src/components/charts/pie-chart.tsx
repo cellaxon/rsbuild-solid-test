@@ -1,74 +1,135 @@
-import { onMount } from 'solid-js'
+import * as d3 from 'd3'
+import { onMount, onCleanup } from 'solid-js'
+
+interface PieDataPoint {
+  label?: string
+  name?: string
+  value: number
+  color?: string
+}
 
 interface PieChartProps {
-  data: Array<{ name: string; value: number; color: string }>
+  data: PieDataPoint[]
+  width?: number
   height?: number
+  title?: string
 }
 
 export function PieChart(props: PieChartProps) {
-  let canvasRef: HTMLCanvasElement | undefined
+  let svgRef: SVGSVGElement | undefined
 
   onMount(() => {
-    if (!canvasRef) return
+    if (!svgRef || !props.data.length) return
 
-    const ctx = canvasRef.getContext('2d')
-    if (!ctx) return
+    const width = props.width || 500
+    const height = props.height || 350
+    const radius = Math.min(width, height) / 2
+    const margin = 40
 
-    const { width, height } = canvasRef
-    const centerX = width / 2
-    const centerY = height / 2
-    const radius = Math.min(width, height) / 2 - 20
-    const data = props.data
+    // Handle both label and name fields
+    const data = props.data.map(d => ({
+      label: d.label || d.name || '',
+      value: d.value,
+      customColor: d.color
+    }))
 
-    const total = data.reduce((sum, item) => sum + item.value, 0)
-    let currentAngle = -Math.PI / 2
+    d3.select(svgRef).selectAll("*").remove()
 
-    ctx.clearRect(0, 0, width, height)
+    const svg = d3.select(svgRef)
+      .attr("width", width)
+      .attr("height", height)
 
-    data.forEach((item) => {
-      const sliceAngle = (item.value / total) * Math.PI * 2
+    const g = svg.append("g")
+      .attr("transform", `translate(${width / 2},${height / 2})`)
 
-      // Draw slice
-      ctx.fillStyle = item.color
-      ctx.beginPath()
-      ctx.moveTo(centerX, centerY)
-      ctx.arc(centerX, centerY, radius, currentAngle, currentAngle + sliceAngle)
-      ctx.closePath()
-      ctx.fill()
+    const color = d3.scaleOrdinal(d3.schemeCategory10)
 
-      // Draw label
-      const labelAngle = currentAngle + sliceAngle / 2
-      const labelX = centerX + Math.cos(labelAngle) * (radius * 0.7)
-      const labelY = centerY + Math.sin(labelAngle) * (radius * 0.7)
+    const pie = d3.pie<typeof data[0]>()
+      .value(d => d.value)
 
-      ctx.fillStyle = 'white'
-      ctx.font = 'bold 12px sans-serif'
-      ctx.textAlign = 'center'
-      ctx.textBaseline = 'middle'
-      ctx.fillText(`${Math.round((item.value / total) * 100)}%`, labelX, labelY)
+    const arc = d3.arc<d3.PieArcDatum<typeof data[0]>>()
+      .outerRadius(radius - margin)
+      .innerRadius(0)
 
-      currentAngle += sliceAngle
-    })
+    const labelArc = d3.arc<d3.PieArcDatum<typeof data[0]>>()
+      .outerRadius(radius - margin)
+      .innerRadius(radius - margin - 40)
 
-    // Draw legend
-    let legendY = 20
-    data.forEach((item) => {
-      ctx.fillStyle = item.color
-      ctx.fillRect(width - 100, legendY, 10, 10)
-      ctx.fillStyle = '#666'
-      ctx.font = '12px sans-serif'
-      ctx.textAlign = 'left'
-      ctx.fillText(item.name, width - 85, legendY + 8)
-      legendY += 20
+    const tooltip = d3.select("body").append("div")
+      .attr("class", "d3-tooltip")
+      .style("opacity", 0)
+      .style("position", "absolute")
+      .style("background", "rgba(0, 0, 0, 0.8)")
+      .style("color", "white")
+      .style("padding", "8px")
+      .style("border-radius", "4px")
+      .style("font-size", "12px")
+      .style("pointer-events", "none")
+
+    const arcs = g.selectAll(".arc")
+      .data(pie(data))
+      .enter().append("g")
+      .attr("class", "arc")
+
+    arcs.append("path")
+      .attr("d", arc)
+      .style("fill", d => d.data.customColor || color(d.data.label))
+      .attr("stroke", "white")
+      .attr("stroke-width", 2)
+      .on("mouseover", function(event, d) {
+        d3.select(this).attr("opacity", 0.7)
+        const percent = ((d.endAngle - d.startAngle) / (2 * Math.PI) * 100).toFixed(1)
+        tooltip.transition().duration(200).style("opacity", .9)
+        tooltip.html(`${d.data.label}: ${d.data.value}<br/>${percent}%`)
+          .style("left", `${event.pageX + 10}px`)
+          .style("top", `${event.pageY - 28}px`)
+      })
+      .on("mouseout", function() {
+        d3.select(this).attr("opacity", 1)
+        tooltip.transition().duration(500).style("opacity", 0)
+      })
+
+    arcs.append("text")
+      .attr("transform", d => `translate(${labelArc.centroid(d)})`)
+      .attr("dy", ".35em")
+      .style("text-anchor", "middle")
+      .style("font-size", "12px")
+      .style("fill", "white")
+      .style("font-weight", "bold")
+      .text(d => {
+        const percent = ((d.endAngle - d.startAngle) / (2 * Math.PI) * 100).toFixed(0)
+        return Number(percent) > 5 ? `${percent}%` : ''
+      })
+
+    const legend = svg.append("g")
+      .attr("transform", `translate(${width - 100}, 20)`)
+
+    const legendItem = legend.selectAll(".legend")
+      .data(data)
+      .enter().append("g")
+      .attr("class", "legend")
+      .attr("transform", (d, i) => `translate(0, ${i * 20})`)
+
+    legendItem.append("rect")
+      .attr("width", 15)
+      .attr("height", 15)
+      .style("fill", d => d.customColor || color(d.label))
+
+    legendItem.append("text")
+      .attr("x", 20)
+      .attr("y", 12)
+      .style("font-size", "12px")
+      .text(d => d.label)
+
+    onCleanup(() => {
+      d3.select("body").selectAll(".d3-tooltip").remove()
     })
   })
 
   return (
-    <canvas
-      ref={canvasRef}
-      width={400}
-      height={props.height || 250}
-      class="w-full"
-    />
+    <div>
+      {props.title && <h3 class="text-lg font-semibold mb-2">{props.title}</h3>}
+      <svg ref={svgRef} role="img" aria-label={props.title ?? 'Pie chart'} />
+    </div>
   )
 }
